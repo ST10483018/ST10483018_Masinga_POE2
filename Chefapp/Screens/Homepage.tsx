@@ -7,43 +7,33 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { StackNavigationProp } from "@react-navigation/stack";
-
-type RootStackParamList = {
-  Home: undefined;
-};
-
-type HomeNavigationProp = StackNavigationProp<RootStackParamList, "Home">;
 
 type Course = "all" | "starters" | "mains" | "desserts";
 
-type MenuItem = {
+interface MenuItem {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: string;
   course: "starters" | "mains" | "desserts";
-};
-
-interface Props {
-  navigation: HomeNavigationProp;
-  menu: MenuItem[];
-  addDish: (newDish: Omit<MenuItem, "id">) => void;
 }
 
-export default function Home({ navigation, menu, addDish }: Props) {
+interface MenuProps {
+  menu: MenuItem[];
+  goBack: () => void;
+}
+
+export default function Home({ menu, goBack }: MenuProps) {
   const [selectedCourse, setSelectedCourse] = useState<Course>("all");
   const [loading] = useState(false);
 
-  // Filter dishes by course
-  const filteredItems: MenuItem[] =
+  const filteredItems =
     selectedCourse === "all"
       ? menu
       : menu.filter((item) => item.course === selectedCourse);
 
-  // Group by course for section display
-  const groupedItems = filteredItems.reduce<Record<string, MenuItem[]>>(
-    (acc, item) => {
+  const groupedItems = filteredItems.reduce(
+    (acc: Record<string, MenuItem[]>, item) => {
       if (!acc[item.course]) acc[item.course] = [];
       acc[item.course].push(item);
       return acc;
@@ -54,15 +44,13 @@ export default function Home({ navigation, menu, addDish }: Props) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Christoffel’s Dining Menu</Text>
-        </View>
-
-        {/* Dish counter */}
+        <TouchableOpacity style={styles.backButton} onPress={goBack}>
+        <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Christoffel’s Dining Menu</Text>
         <Text style={styles.subtitle}>Total Dishes: {filteredItems.length}</Text>
 
-        {/* Filter Buttons */}
+        {/* Filter */}
         <Text style={styles.label}>Filter by Course</Text>
         <View style={styles.courseRow}>
           {(["all", "starters", "mains", "desserts"] as Course[]).map((c) => (
@@ -76,7 +64,9 @@ export default function Home({ navigation, menu, addDish }: Props) {
             >
               <Text
                 style={
-                  selectedCourse === c ? styles.courseTextActive : styles.courseText
+                  selectedCourse === c
+                    ? styles.courseTextActive
+                    : styles.courseText
                 }
               >
                 {c.toUpperCase()}
@@ -97,11 +87,9 @@ export default function Home({ navigation, menu, addDish }: Props) {
                 <Text style={styles.sectionTitle}>{course.toUpperCase()}</Text>
                 {groupedItems[course].map((item) => (
                   <View key={item.id} style={styles.itemCard}>
-                    <View>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemPrice}>R {item.price}</Text>
-                      <Text style={styles.itemDescription}>{item.description}</Text>
-                    </View>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemPrice}>R {item.price}</Text>
+                    <Text style={styles.itemDescription}>{item.description}</Text>
                   </View>
                 ))}
               </View>
@@ -116,11 +104,13 @@ export default function Home({ navigation, menu, addDish }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#d8ddddff" },
   content: { padding: 16, paddingBottom: 40 },
-  header: {
-    alignItems: "center",
-    marginBottom: 20,
+  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+    marginBottom: 12,
   },
-  title: { fontSize: 24, fontWeight: "bold", textAlign: "center" },
   label: {
     fontWeight: "400",
     color: "#111111ff",
@@ -154,7 +144,6 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   itemCard: {
-    flexDirection: "row",
     backgroundColor: "#f8f8f8",
     borderRadius: 8,
     padding: 12,
@@ -169,10 +158,17 @@ const styles = StyleSheet.create({
     color: "#888",
     fontSize: 16,
   },
-  subtitle: {
-    fontSize: 16,
+  backButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginBottom: 8,
+    backgroundColor: "transparent",
+  },
+  backText: {
+    fontSize: 14,
+    color: "#007AFF",
     fontWeight: "500",
-    color: "#333",
-    marginBottom: 12,
   },
 });
