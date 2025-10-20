@@ -1,101 +1,216 @@
 import React, { useState } from "react";
-import { SafeAreaView, Text, TextInput, Button, FlatList, View, StyleSheet } from "react-native";
-import Home from "./Screens/Homepage";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+}
+// Removed the specific React Native import and kept the general structure
+from "react-native"; 
+import { StackNavigationProp } from "@react-navigation/stack";
 
-type Dish = {
+type RootStackParamList = {
+  Home: undefined;
+};
+
+type HomeNavigationProp = StackNavigationProp<RootStackParamList, "Home">;
+
+type Course = "all" | "starters" | "mains" | "desserts";
+
+type MenuItem = {
   id: string;
   name: string;
   description: string;
-  price: string;
+  price: number;
+  course: "starters" | "mains" | "desserts";
 };
 
-export default function App() {
-  const [dishes, setDishes] = useState<Dish[]>([
-    {
-      id: "1",
-      name: "Prawn Gratin",
-      description: "Prawns in a tarragon mustard cream sauce with herbs and charred ciabatta",
-      price: "R198",
-    },
-    {
-      id: "2",
-      name: "Fillet Steak",
-      description: "250g fillet medallions with roasted cherry tomatoes, crispy onions, fries, and jalapeño Dijon mustard sauce",
-      price: "R322",
-    },
-    {
-      id: "3",
-      name: "Coffee Pavlova",
-      description: "Coffee meringue, coffee cream, pecan florentine, maple coffee syrup, and cocoa powder",
-      price: "R108",
-    },
-  ]);
+interface Props {
+  navigation: HomeNavigationProp;
+  menu?: MenuItem[];
+  addDish?: (newDish: Omit<MenuItem, "id">) => void;
+}
+const defaultMenu: MenuItem[] = [
+    { id: "1", name: "Caesar Salad", description: "Fresh romaine with Caesar dressing", price: 45, course: "starters" },
+    { id: "2", name: "Grilled Chicken", description: "Served with seasonal vegetables", price: 85, course: "mains" },
+    { id: "3", name: "Chocolate Cake", description: "Rich chocolate layered cake", price: 35, course: "desserts" },
+  ];
 
-  const [newDish, setNewDish] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newPrice, setNewPrice] = useState("");
+export default function Home({ navigation, menu = defaultMenu, addDish }: Props): React.JSX.Element {
+  const [selectedCourse, setSelectedCourse] = useState<Course>("all");
+  // The 'loading' state is used correctly below (it's a boolean)
+  const [loading] = useState(false); 
 
-  const addDish = () => {
-    if (!newDish || !newDesc || !newPrice) return;
-    const dish: Dish = {
-      id: Date.now().toString(),
-      name: newDish,
-      description: newDesc,
-      price: newPrice,
-    };
-    setDishes([...dishes, dish]);
-    setNewDish("");
-    setNewDesc("");
-    setNewPrice("");
-  };
+  // Filter dishes by course
+  const filteredItems: MenuItem[] =
+    selectedCourse === "all"
+      ? menu
+      : menu.filter((item) => item.course === selectedCourse);
+
+  // Group by course for section display
+  const groupedItems = filteredItems.reduce<Record<string, MenuItem[]>>(
+    (acc, item) => {
+      if (!acc[item.course]) acc[item.course] = [];
+      acc[item.course].push(item);
+      return acc;
+    },
+    {}
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Home />
-      <Text style={styles.title}>Menu Management</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Christoffel’s Dining Menu</Text>
+        </View>
 
-      <FlatList
-        data={dishes}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.dishCard}>
-            <Text style={styles.dishTitle}>{item.name}</Text>
-            <Text>{item.description}</Text>
-            <Text style={styles.price}>{item.price}</Text>
+        {/* Dish counter */}
+        <Text style={styles.subtitle}>Total Dishes: {filteredItems.length}</Text>
+
+        {/* Filter Buttons */}
+        <Text style={styles.label}>Filter by Course</Text>
+        <View style={styles.courseRow}>
+          {(["all", "starters", "mains", "desserts"] as Course[]).map((c) => (
+            <TouchableOpacity
+              key={c}
+              // The logic below correctly evaluates to a boolean or style object
+              style={[
+                styles.courseButton,
+                selectedCourse === c && styles.courseButtonActive,
+              ]}
+              // No problematic string props used here
+              onPress={() => setSelectedCourse(c)}
+            >
+              <Text
+                style={
+                  selectedCourse === c ? styles.courseTextActive : styles.courseText
+                }
+              >
+                {c.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Menu Items */}
+        {loading ? (
+          // The ActivityIndicator prop 'animating' is correctly defaulted to true
+          // or can be explicitly set: animating={true} (not needed as size prop implies it)
+          <ActivityIndicator size="large" color="#007AFF" /> 
+        ) : filteredItems.length === 0 ? (
+          <Text style={styles.emptyText}>No items available.</Text>
+        ) : (
+          <View style={styles.menuContainer}>
+            {Object.keys(groupedItems).map((course) => (
+              <View key={course} style={styles.section}>
+                <Text style={styles.sectionTitle}>{course.toUpperCase()}</Text>
+                {groupedItems[course].map((item) => (
+                  <View key={item.id} style={styles.itemCard}>
+                    <View>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemPrice}>R {item.price}</Text>
+                      <Text style={styles.itemDescription}>{item.description}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))}
           </View>
         )}
-      />
-
-      <Text style={styles.addTitle}>Add New Dish</Text>
-      <TextInput
-        placeholder="Dish name"
-        value={newDish}
-        onChangeText={setNewDish}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Description"
-        value={newDesc}
-        onChangeText={setNewDesc}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Price (e.g. R120)"
-        value={newPrice}
-        onChangeText={setNewPrice}
-        style={styles.input}
-      />
-      <Button title="Add Dish" onPress={addDish} />
-    </SafeAreaView>
+      </ScrollView>
+      {/* Styles omitted for brevity, but they should be in styles={...} */}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-  addTitle: { marginTop: 20, fontSize: 18, fontWeight: "bold" },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 8, marginVertical: 5, borderRadius: 5 },
-  dishCard: { padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  dishTitle: { fontWeight: "bold", fontSize: 16 },
-  price: { color: "#444", marginTop: 4 },
+const styles = StyleSheet.create({ 
+  container: { 
+    flex: 1, 
+    backgroundColor: "#f5f5f5", 
+  },
+  content: { 
+    padding: 16,   
+  paddingBottom: 32, 
+  },
+  header: { 
+    marginBottom: 16, 
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: "bold", 
+    textAlign: "center", 
+  },
+  subtitle: { 
+    fontSize: 18, 
+    textAlign: "center", 
+    marginBottom: 16, 
+  },
+  label: { 
+    fontSize: 16, 
+    marginBottom: 8, 
+  },
+  courseRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-around", 
+    marginBottom: 16, 
+  },
+  courseButton: { 
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    borderRadius: 20, 
+    backgroundColor: "#e0e0e0", 
+  },
+  courseButtonActive: { 
+    backgroundColor: "#007AFF", 
+  },  
+  courseText: { 
+    color: "#000", 
+  },  
+  courseTextActive: { 
+    color: "#fff", 
+  },  
+  menuContainer: {  
+    marginTop: 16,  
+  },  
+  section: {  
+    marginBottom: 24,  
+  },  
+  sectionTitle: {  
+    fontSize: 20,  
+    fontWeight: "bold",  
+    marginBottom: 12,  
+  },  
+  itemCard: {  
+    backgroundColor: "#fff",  
+    padding: 12,  
+    borderRadius: 8,  
+    marginBottom: 12,  
+    shadowColor: "#000",  
+    shadowOffset: { width: 0, height: 2 },  
+    shadowOpacity: 0.1,  
+    shadowRadius: 4,  
+    elevation: 2,  
+  },  
+  itemName: {  
+    fontSize: 16,  
+    fontWeight: "bold",  
+  },  
+  itemPrice: {  
+    fontSize: 14,  
+    color: "#888",  
+    marginBottom: 8,  
+  },  
+  itemDescription: {  
+    fontSize: 14,  
+    color: "#555", 
+  },  
+  emptyText: {  
+    textAlign: "center",  
+    fontSize: 16,  
+    color: "#888",  
+    marginTop: 32,  
+  },  
 });
