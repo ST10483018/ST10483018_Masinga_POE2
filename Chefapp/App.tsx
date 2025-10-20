@@ -209,7 +209,7 @@ export default function App() {
               multiline
             />
             <TextInput
-              placeholder="Price (numeric)"
+              placeholder="Price"
               value={price}
               onChangeText={setPrice}
               keyboardType="numeric"
