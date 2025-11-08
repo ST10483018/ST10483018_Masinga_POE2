@@ -1,12 +1,8 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import React, { useContext, useState } from "react";
+import {View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator,} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { MenuContext } from "../MenuContext"; 
+
 
 type Course = "all" | "starters" | "mains" | "desserts";
 
@@ -48,7 +44,7 @@ export default function Home({ menu, goBack }: MenuProps) {
         <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Christoffel’s Dining Menu</Text>
-        <Text style={styles.subtitle}>Total Dishes: {filteredItems.length}</Text>
+        
 
         {/* Filter */}
         <Text style={styles.label}>Filter by Course</Text>
@@ -105,12 +101,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#d8ddddff" },
   content: { padding: 16, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 12,
-  },
   label: {
     fontWeight: "400",
     color: "#111111ff",
