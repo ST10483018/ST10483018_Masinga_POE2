@@ -1,164 +1,95 @@
-import React, { useContext, useState } from "react";
-import {View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator,} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { MenuContext } from "../MenuContext"; 
+import React, { useMemo } from "react";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList, Dish } from "../App";
 
+type Props = NativeStackScreenProps<RootStackParamList, "Home"> & {
+  menu: Dish[];
+  setMenu: React.Dispatch<React.SetStateAction<Dish[]>>;
+};
 
-type Course = "all" | "starters" | "mains" | "desserts";
+export default function Homepage({ navigation, menu, setMenu }: Props) {
+  const totalDishes = menu.length;
+  const totalValue = useMemo(() => menu.reduce((s, m) => s + (m.price || 0), 0), [menu]);
+  const avgAll = totalDishes ? totalValue / totalDishes : 0;
 
-interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  course: "starters" | "mains" | "desserts";
-}
+  const avgPerCourse = useMemo(() => {
+    const result: Record<Dish["course"], number> = { starters: 0, mains: 0, desserts: 0 };
+    const counts: Record<Dish["course"], number> = { starters: 0, mains: 0, desserts: 0 };
+    menu.forEach((m) => {
+      result[m.course] += m.price;
+      counts[m.course] += 1;
+    });
+    (Object.keys(result) as Dish["course"][]).forEach((c) => {
+      result[c] = counts[c] ? result[c] / counts[c] : 0;
+    });
+    return result;
+  }, [menu]);
 
-interface MenuProps {
-  menu: MenuItem[];
-  goBack: () => void;
-}
-
-export default function Home({ menu, goBack }: MenuProps) {
-  const [selectedCourse, setSelectedCourse] = useState<Course>("all");
-  const [loading] = useState(false);
-
-  const filteredItems =
-    selectedCourse === "all"
-      ? menu
-      : menu.filter((item) => item.course === selectedCourse);
-
-  const groupedItems = filteredItems.reduce(
-    (acc: Record<string, MenuItem[]>, item) => {
-      if (!acc[item.course]) acc[item.course] = [];
-      acc[item.course].push(item);
-      return acc;
-    },
-    {}
-  );
+  const handleDelete = (id: string) => {
+    setMenu((prev) => prev.filter((i) => i.id !== id));
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity style={styles.backButton} onPress={goBack}>
-        <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Christoffel’s Dining Menu</Text>
-        
+      <Text style={styles.title}>🍽️ Chef Menu</Text>
 
-        {/* Filter */}
-        <Text style={styles.label}>Filter by Course</Text>
-        <View style={styles.courseRow}>
-          {(["all", "starters", "mains", "desserts"] as Course[]).map((c) => (
-            <TouchableOpacity
-              key={c}
-              style={[
-                styles.courseButton,
-                selectedCourse === c && styles.courseButtonActive,
-              ]}
-              onPress={() => setSelectedCourse(c)}
-            >
-              <Text
-                style={
-                  selectedCourse === c
-                    ? styles.courseTextActive
-                    : styles.courseText
-                }
-              >
-                {c.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <View style={styles.summary}>
+        <Text>Total dishes: {totalDishes}</Text>
+        <Text>Total value: {new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(totalValue)}</Text>
+        <Text>Average (all): {new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(avgAll)}</Text>
+        <Text>Avg Starters: R{avgPerCourse.starters.toFixed(2)}</Text>
+        <Text>Avg Mains: R{avgPerCourse.mains.toFixed(2)}</Text>
+        <Text>Avg Desserts: R{avgPerCourse.desserts.toFixed(2)}</Text>
+      </View>
 
-        {/* Menu Items */}
-        {loading ? (
-          <ActivityIndicator size="large" color="#007AFF" />
-        ) : filteredItems.length === 0 ? (
-          <Text style={styles.emptyText}>No items available.</Text>
-        ) : (
-          <View style={styles.menuContainer}>
-            {Object.keys(groupedItems).map((course) => (
-              <View key={course} style={styles.section}>
-                <Text style={styles.sectionTitle}>{course.toUpperCase()}</Text>
-                {groupedItems[course].map((item) => (
-                  <View key={item.id} style={styles.itemCard}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemPrice}>R {item.price}</Text>
-                    <Text style={styles.itemDescription}>{item.description}</Text>
-                  </View>
-                ))}
-              </View>
-            ))}
+      <FlatList
+        data={menu}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{item.name}</Text>
+              {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.price}>{new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(item.price)}</Text>
+              <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.removeBtn}>
+                <Text style={{ color: "#fff" }}>Remove</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
-      </ScrollView>
+        ListEmptyComponent={<Text style={styles.empty}>No dishes yet.</Text>}
+        contentContainerStyle={{ padding: 12 }}
+      />
+
+      <View style={styles.buttons}>
+        <TouchableOpacity style={styles.primary} onPress={() => navigation.navigate("AddEditDish")}>
+          <Text style={styles.primaryText}>Manage Menu</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondary} onPress={() => navigation.navigate("FilterMenu")}>
+          <Text style={styles.secondaryText}>Filter</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#d8ddddff" },
-  content: { padding: 16, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  label: {
-    fontWeight: "400",
-    color: "#111111ff",
-    marginBottom: 8,
-    fontSize: 14,
-  },
-  courseRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 16,
-  },
-  courseButton: {
-    borderWidth: 1,
-    borderColor: "#cccccc3d",
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  courseButtonActive: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
-  },
-  courseText: { color: "#333" },
-  courseTextActive: { color: "#fff", fontWeight: "600" },
-  menuContainer: { marginTop: 10 },
-  section: { marginBottom: 24 },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    textTransform: "capitalize",
-  },
-  itemCard: {
-    backgroundColor: "#f8f8f8",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  itemName: { fontSize: 16, fontWeight: "500" },
-  itemPrice: { color: "#666", marginTop: 4 },
-  itemDescription: { color: "#444", marginTop: 6, fontSize: 13 },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 40,
-    color: "#888",
-    fontSize: 16,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    marginBottom: 8,
-    backgroundColor: "transparent",
-  },
-  backText: {
-    fontSize: 14,
-    color: "#007AFF",
-    fontWeight: "500",
-  },
+  container: { flex: 1, backgroundColor: "#f2f5f6" },
+  title: { fontSize: 22, fontWeight: "700", padding: 12 },
+  summary: { backgroundColor: "#fff", margin: 12, padding: 12, borderRadius: 8 },
+  card: { flexDirection: "row", backgroundColor: "#fff", padding: 12, marginBottom: 10, borderRadius: 8, alignItems: "center" },
+  name: { fontSize: 16, fontWeight: "600" },
+  desc: { color: "#444", marginTop: 4 },
+  price: { fontWeight: "700" },
+  removeBtn: { marginTop: 8, backgroundColor: "#dc3545", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  empty: { textAlign: "center", marginTop: 40, color: "#888" },
+  buttons: { flexDirection: "row", justifyContent: "space-between", padding: 12 },
+  primary: { backgroundColor: "#007AFF", padding: 12, borderRadius: 8, flex: 0.65, alignItems: "center" },
+  primaryText: { color: "#fff", fontWeight: "700" },
+  secondary: { backgroundColor: "#fff", padding: 12, borderRadius: 8, flex: 0.32, alignItems: "center", borderWidth: 1, borderColor: "#ddd" },
+  secondaryText: { color: "#007AFF", fontWeight: "700" },
 });
